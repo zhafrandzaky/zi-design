@@ -14,6 +14,7 @@ Keywords: **MUST** is mandatory, **SHOULD** is the default unless there is a sta
 4. When changing an existing project, adopt the standard incrementally: map the project's existing tokens to the ones here instead of rewriting every component at once.
 5. If `brand.md` contradicts a **MUST** rule here (for example, a palette that fails contrast), keep the rule, apply the closest compliant value, and report the conflict to the owner.
 6. Run the checklist in section 16 before declaring UI work done.
+7. Rules here prevent noise, not character. A page that only avoids mistakes is not done: landing and marketing pages **MUST** also meet section 14.1 (Expressive moments).
 
 ---
 
@@ -40,7 +41,7 @@ Any field left empty in `brand.md` falls back to the default.
 | Display font | same as sans |
 | Icon library | Lucide |
 | Styling | Tailwind CSS v4 on top of CSS custom properties |
-| Theme | Light and dark, follows system, manual toggle |
+| Theme | Light and dark, one header toggle (first visit follows the system) |
 
 ---
 
@@ -48,7 +49,8 @@ Any field left empty in `brand.md` falls back to the default.
 
 - **Content first.** Layout exists to make content readable and actions obvious. Decoration that does not help comprehension is removed.
 - **One system.** Every color, size, space, radius, shadow and duration comes from a token. Consistency beats novelty.
-- **Quiet by default.** Flat surfaces, thin borders, restrained motion. Emphasis is scarce so it stays meaningful.
+- **Flat and quiet by default.** Solid colors, thin borders, restrained motion. Emphasis is scarce so it stays meaningful.
+- **Bold where it counts.** Every landing page has deliberate moments of solid brand color and a real product interaction (section 14.1). Quiet is not the same as generic.
 - **Accessible always.** WCAG 2.2 AA is the floor, in both themes.
 - **Honest.** Real content, real data, real screenshots. Nothing fake.
 
@@ -64,6 +66,7 @@ Any field left empty in `brand.md` falls back to the default.
 | Primary | `primary` | Brand, header/nav accents, links, main action buttons, focus ring, selected states | ~30% |
 | Highlight | `highlight` | The single most important CTA on a screen, key highlights, "new" badges | ~10% |
 | Status | `success`, `warning`, `destructive`, `info` | Feedback only, never decoration | as needed |
+| Color blocks | `brand-surface`, `stage` | Full-width sections: hero, product demo, CTA band | marketing pages only |
 
 Rules:
 
@@ -158,6 +161,17 @@ Names follow the shadcn/ui convention so shadcn components work unchanged. Note:
   --destructive-soft: light-dark(color-mix(in oklab, var(--destructive) 8%, white), color-mix(in oklab, var(--destructive) 12%, var(--brand-ink)));
   --info-soft:        var(--primary-soft);
 
+  /* ---- Expressive surfaces: solid color blocks, same in both themes ---- */
+  --brand-surface:            var(--brand-primary);
+  --brand-surface-foreground: white;
+  --brand-surface-muted:      color-mix(in oklab, white 75%, var(--brand-primary));
+  --brand-surface-raised:     color-mix(in oklab, white 8%, var(--brand-primary));  /* hover on brand blocks */
+  --brand-surface-border:     color-mix(in oklab, white 18%, var(--brand-primary));
+  --stage:            light-dark(var(--brand-ink), color-mix(in oklab, var(--brand-ink) 60%, black)); /* dark demo block */
+  --stage-foreground: var(--brand-paper);
+  --stage-muted:      color-mix(in oklab, var(--brand-paper) 70%, var(--brand-ink));
+  --stage-border:     color-mix(in oklab, white 14%, var(--stage));
+
   /* ---- Overlay and shadow color ---- */
   --overlay:      color-mix(in oklab, var(--brand-ink) 55%, transparent);
   --shadow-color: light-dark(color-mix(in oklab, var(--brand-ink) 10%, transparent), rgb(0 0 0 / 0.45));
@@ -178,6 +192,11 @@ Measured contrast of the default tokens (all pass AA):
 | `highlight-text` on `background` | 4.9:1 | 5.8:1 |
 | `input` border on `background` | 3.2:1 | 3.5:1 |
 | `destructive` text on `background` | 5.5:1 | 5.6:1 |
+| `brand-surface-foreground` on `brand-surface` | 17.0:1 | 17.0:1 |
+| `brand-surface-muted` on `brand-surface` | 9.5:1 | 9.5:1 |
+| `highlight` on `brand-surface` (UI, large text) | 5.2:1 | 5.2:1 |
+| `stage-foreground` on `stage` | 13.0:1 | 16.4:1 |
+| `stage-muted` on `stage` | 6.6:1 | 8.4:1 |
 
 ### 3.4 Changing the palette
 
@@ -191,7 +210,9 @@ When the owner sets new primitives in `brand.md`, the agent **MUST**:
 
 ## 4. Theming (light and dark)
 
-- **MUST** support light and dark. Default is the system preference; the user can pick System, Light or Dark; the choice is stored in `localStorage` under `theme`.
+- **MUST** support light and dark. On the first visit the theme follows the system preference; after that the user's choice wins and is stored in `localStorage` under `theme`.
+- The control is **one toggle button** (light/dark) in the header, showing a moon icon in light mode and a sun icon in dark mode, with an `aria-label`. No "System" option, no dropdown. In apps, a copy of the setting may also live on the settings page.
+- **NEVER** place the theme control in the footer.
 - **MUST** prevent the flash of the wrong theme: put this inline in `<head>`, before any stylesheet:
 
 ```html
@@ -208,7 +229,17 @@ When the owner sets new primitives in `brand.md`, the agent **MUST**:
 </script>
 ```
 
-- When the choice is System, listen to `matchMedia("(prefers-color-scheme: dark)")` changes and update `data-theme`.
+Toggle handler:
+
+```js
+document.querySelector("[data-theme-toggle]").addEventListener("click", () => {
+  const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem("theme", next); } catch (e) {}
+});
+```
+
+- Until the user has toggled once, follow `matchMedia("(prefers-color-scheme: dark)")` changes.
 - Without JavaScript, `light-dark()` still follows the system theme.
 - **SHOULD** style colors through tokens, not `dark:` utilities. Use `dark:` only for non-color differences (for example swapping an image).
 - Dark theme shows depth with lighter surfaces (`card`, `popover`), not stronger shadows.
@@ -229,6 +260,14 @@ When the owner sets new primitives in `brand.md`, the agent **MUST**:
 ```
 
 - Load Geist from the `geist` npm package, `next/font` (Next.js), or Google Fonts. Self-host when possible.
+- `next/font` and the `geist` package rename the family (hashed name) and expose it as a variable. Point the tokens at that variable, not at `"Geist"`:
+
+```css
+:root {
+  --brand-font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --brand-font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+```
 - `font-display: swap`; preload only the main sans file.
 - The display font (if set in `brand.md`) is used only for hero and H1 on marketing pages. App screens always use sans.
 
@@ -257,7 +296,8 @@ Rules:
 - Headings use sentence case. **NEVER** all-caps paragraphs; uppercase is allowed only for short labels at `text-xs` with `tracking-wider`.
 - Hierarchy comes from size and weight, not from color. Do not mix more than 3 sizes in one card.
 - Use `text-wrap: balance` for headings and `text-wrap: pretty` for paragraphs.
-- Code, keyboard keys, IDs and hashes use the mono font.
+- Code, keyboard keys, URLs/handles, IDs and hashes use the mono font. **NEVER** use mono for money, prices or statistics: monospace digits (slashed zero, wide separators) make amounts read like code. Use sans with `tabular-nums`.
+- Big numbers (step numbers, a headline price, a calculator result) are allowed at `text-5xl` to `text-7xl`, weight 700, tracking `-0.05em`, `tabular-nums`. One per block.
 
 ---
 
@@ -476,6 +516,12 @@ Interactive cards show a brand-colored border on hover. Non-interactive cards ha
 - No lift, scale or shadow on card hover by default.
 - Make the whole card clickable with a stretched link (`::after` on the main link covering the card), not a `div` with `onclick`.
 
+### 9.3a Content swaps (tabs, switchers, carousels)
+
+- The container (card, panel, frame) **MUST** stay still. Only the content inside it changes.
+- Animate the incoming content only: `opacity` from about 0.4 to 1 over `--duration-base`. No slide, no fade of the container, no fade from 0 (it reads as a blink).
+- Keep the container height stable across variants where possible, so the layout below does not jump.
+
 ### 9.4 Smooth scroll
 
 ```css
@@ -578,6 +624,8 @@ Rules:
 - Active item: `primary` text plus an indicator (underline or left bar), not color alone.
 - Mobile: menu in a sheet/drawer, focus trapped, closable with Esc.
 - App layouts: sidebar 240 to 280px, collapsible; breadcrumbs for depth greater than 2.
+- Theme toggle lives in the header (section 4).
+- Footer: same background as the page with one top `border`; link columns in `muted-foreground`; the copyright line is centered at the bottom with spacing above it, **no divider line** between the columns and the copyright. No theme control, no color block.
 
 ### 10.5 Overlays
 
@@ -674,6 +722,22 @@ Content
 
 Prefer instead: strong typography, generous whitespace, real product screenshots, clear hierarchy, one accent used with intent, layouts shaped by the actual content.
 
+### 14.1 Expressive moments (landing and marketing pages)
+
+Avoiding slop is not enough: a page built only from safe defaults looks like every template. Every landing page **MUST** have:
+
+1. **At least one solid brand color block**: a full-width section on `brand-surface` (usually the hero) or `stage` (a product demo), and optionally a CTA band on `highlight` with `highlight-foreground` text and a `brand-surface` button. Blocks are flat: no gradients, no patterns.
+2. **At least one interactive product demonstration**: something the visitor can operate that shows what the product does (a switcher that swaps a real-looking UI, a calculator, a live preview, a simulated notification feed). Prefer CSS-only (`:has()` with radio inputs) or small vanilla scripts that work without hydration.
+3. **One typographic statement**: a display headline with one phrase in `highlight`, or big numbers (section 5.2).
+
+Flat emphasis techniques (use instead of shadows):
+
+- **Offset color block**: a solid `highlight` (or `primary`) rectangle placed 16px down-right behind a featured card, same radius as the card.
+- **Color blocking between sections** instead of borders: alternate `background`, `card`, `brand-surface` and `stage`. Never two identical color blocks next to each other.
+- **Accent bar**: a short `h-1 w-12` `highlight` bar under a big number or heading.
+
+Limits: at most two `brand-surface`/`stage` blocks plus one `highlight` band per page; app and dashboard screens use none of them.
+
 ---
 
 ## 15. Tailwind CSS v4 setup
@@ -727,6 +791,16 @@ Put tokens (sections 3, 5.1, 6.4, 9.1) in the global stylesheet, then map them:
   --color-info-foreground: var(--info-foreground);
   --color-info-soft: var(--info-soft);
 
+  --color-brand: var(--brand-surface);
+  --color-brand-foreground: var(--brand-surface-foreground);
+  --color-brand-muted: var(--brand-surface-muted);
+  --color-brand-raised: var(--brand-surface-raised);
+  --color-brand-border: var(--brand-surface-border);
+  --color-stage: var(--stage);
+  --color-stage-foreground: var(--stage-foreground);
+  --color-stage-muted: var(--stage-muted);
+  --color-stage-border: var(--stage-border);
+
   --font-sans: var(--brand-font-sans);
   --font-mono: var(--brand-font-mono);
   --font-display: var(--brand-font-display);
@@ -746,7 +820,7 @@ Put tokens (sections 3, 5.1, 6.4, 9.1) in the global stylesheet, then map them:
 }
 ```
 
-Usage examples: `bg-background text-foreground`, `bg-primary text-primary-foreground hover:bg-primary-hover`, `bg-highlight text-highlight-foreground`, `text-highlight-text`, `border-border`, `border-input`, `shadow-2`.
+Usage examples: `bg-brand text-brand-foreground`, `bg-stage text-stage-foreground`, `bg-background text-foreground`, `bg-primary text-primary-foreground hover:bg-primary-hover`, `bg-highlight text-highlight-foreground`, `text-highlight-text`, `border-border`, `border-input`, `shadow-2`.
 
 - Use the Tailwind default radius scale (`rounded-sm/md/lg/xl`) and the default type scale.
 - Remove Tailwind's default palette usage (`bg-blue-500`, `text-gray-600`) from components; only token classes are allowed.
@@ -771,4 +845,8 @@ Usage examples: `bg-background text-foreground`, `bg-primary text-primary-foregr
 - [ ] Forms: visible labels, inline errors with fixes, correct input types.
 - [ ] Images sized, lazy below the fold, modern formats.
 - [ ] Nothing from section 14 shipped.
+- [ ] Landing pages: a brand color block, an interactive product demo, and a typographic statement (section 14.1).
+- [ ] Switchers and tabs swap content only; the container never blinks.
+- [ ] Theme toggle is a single header button; footer uses the page background with a centered copyright line.
+- [ ] Money and statistics use sans `tabular-nums`, not mono.
 - [ ] Copy is specific, consistent in language, free of hype and placeholders.
