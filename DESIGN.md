@@ -13,8 +13,9 @@ Keywords: **MUST** is mandatory, **SHOULD** is the default unless there is a sta
 3. Never invent a new color, font size, spacing value, radius, or shadow outside the scales here. If a design truly needs one, add it as a token and say so in your summary.
 4. When changing an existing project, adopt the standard incrementally: map the project's existing tokens to the ones here instead of rewriting every component at once.
 5. If `brand.md` contradicts a **MUST** rule here (for example, a palette that fails contrast), keep the rule, apply the closest compliant value, and report the conflict to the owner.
-6. Run the checklist in section 16 before declaring UI work done.
-7. Rules here prevent noise, not character. A page that only avoids mistakes is not done: landing and marketing pages **MUST** also meet section 14.1 (Expressive moments).
+6. Run the checklist in section 17 before declaring UI work done.
+7. Follow the implementation rules in section 15: interactivity goes through the framework, never raw `<script>` tags inside components.
+8. Rules here prevent noise, not character. A page that only avoids mistakes is not done: landing and marketing pages **MUST** also meet section 14.1 (Expressive moments).
 
 ---
 
@@ -172,6 +173,12 @@ Names follow the shadcn/ui convention so shadcn components work unchanged. Note:
   --stage-muted:      color-mix(in oklab, var(--brand-paper) 70%, var(--brand-ink));
   --stage-border:     color-mix(in oklab, white 14%, var(--stage));
 
+  /* ---- Charts: single-series hue derived from the brand primary ---- */
+  /* `primary` itself fails chart checks (too dark in light, too gray in dark). */
+  --chart-1:       light-dark(oklch(from var(--brand-primary) 0.48 0.2 h), oklch(from var(--brand-primary) 0.65 0.15 h));
+  --chart-1-hover: light-dark(oklch(from var(--brand-primary) 0.38 0.2 h), oklch(from var(--brand-primary) 0.74 0.13 h));
+  --chart-grid:    var(--border);
+
   /* ---- Overlay and shadow color ---- */
   --overlay:      color-mix(in oklab, var(--brand-ink) 55%, transparent);
   --shadow-color: light-dark(color-mix(in oklab, var(--brand-ink) 10%, transparent), rgb(0 0 0 / 0.45));
@@ -197,6 +204,7 @@ Measured contrast of the default tokens (all pass AA):
 | `highlight` on `brand-surface` (UI, large text) | 5.2:1 | 5.2:1 |
 | `stage-foreground` on `stage` | 13.0:1 | 16.4:1 |
 | `stage-muted` on `stage` | 6.6:1 | 8.4:1 |
+| `chart-1` mark on `card` (default palette: `#244ecc` / `#628bea`) | 6.9:1 | 4.3:1 |
 
 ### 3.4 Changing the palette
 
@@ -629,16 +637,18 @@ Rules:
 
 ### 10.5 Overlays
 
-- Modal: `rounded-xl`, `elevation-3`, `overlay` backdrop, max width 32rem for confirmations, focus trap, Esc and backdrop click close (except during unsaved destructive flows), focus returns to the trigger.
+- Modal: use the native `<dialog>` element opened with `showModal()` (built-in focus trap, Esc to close, top layer). `rounded-xl`, `popover` background, `border`, `elevation-3`, `dialog::backdrop { background: var(--overlay); }`. Max width 32rem for confirmations and short forms. Backdrop click closes it (except during unsaved destructive flows); focus returns to the trigger.
+- Dialog layout: title + one-line context at the top with an icon-only close button (`aria-label`), fields in the middle, actions bottom-right (Secondary "Batal", then Primary with a specific verb). Validation errors appear inline under the field; the dialog stays open until the input is valid.
 - Do not put long forms in modals on mobile; use a page or a full-height sheet.
 - Dropdown/popover: `rounded-lg`, `popover` background, `border`, `elevation-2`.
 - Tooltip: short text only, appears after 300ms delay, never holds essential information.
 
 ### 10.6 Feedback
 
-- Toast: bottom-right on desktop, bottom-center on mobile, `elevation-2`, at most 3 stacked, `aria-live="polite"`. Success/info auto-dismiss after 5s; errors stay until dismissed.
+- Toast: bottom-right on desktop, bottom-center on mobile, `elevation-2`, at most 3 stacked, inside an `aria-live="polite"` region. Anatomy: `popover` background, `border`, a 3px left border in the status color, a status icon (same color), the message, and an icon-only close button. Max width 24rem. Success/info auto-dismiss after 5s (`role="status"`); errors stay until dismissed (`role="alert"`). Never report success for something that did not happen.
 - Inline alert: soft status background, `foreground` text, status-colored icon and left border.
-- Badges: soft background with `foreground` text, or solid status color for counts. `rounded-sm` or `rounded-md`.
+- Badges: soft background with `foreground` text, or solid status color for counts. `rounded-sm` or `rounded-md`. Status badges always carry an icon plus a label.
+- Demo or sample data: when a screen shows sample data, a `role="note"` banner at the top says so (`info-soft` background, `primary` left border, info icon): "Mode demo. Semua angka dan nama di halaman ini adalah data contoh." Actions that would move money or send data show a toast stating it was a demo.
 
 ### 10.7 Data display
 
@@ -659,6 +669,25 @@ Every data view **MUST** define these states:
 | Success | Confirm with a toast or inline message; do not navigate away silently. |
 
 ---
+
+### 10.9 Charts
+
+- Pick the form first: one number is a stat tile, not a chart; change over time is a column or line chart; parts of a whole are ranked bars. **NEVER** dual-axis charts, pies for close values, or 3D.
+- Single series uses `chart-1`. Multiple series need a validated categorical palette and a legend; never reuse status colors for series.
+- Marks: bars at most 24px thick with a 4px rounded data end and a square base; lines 2px; markers at least 8px. Gridlines are 1px solid `chart-grid`; axis text 11px `muted-foreground` with `tabular-nums`.
+- Text never wears the series color: values and labels use text tokens.
+- Label selectively: the peak or the latest value only. Axis ticks use compact values on the axis (`Rp1 jt`, `500 rb`) and full values elsewhere.
+- Every chart **MUST** have: a hover tooltip (value first, label second), keyboard access (focusable, arrow keys move between points), and a table view of the same data (for example a "Lihat data sebagai tabel" disclosure).
+- Size charts from their container on the client (measure, then draw) so server and client markup match.
+
+### 10.10 Dashboards and app screens
+
+- No color blocks (`brand-surface`, `stage`, `highlight` bands) and no scroll reveal. The page background is `background`; content sits in `card`s.
+- Layout: sidebar 240 to 280px (drawer on mobile) with the active item marked by `primary-soft` background, `primary` text and a 3px left bar; a 64px top bar with breadcrumb, page actions, theme toggle and notifications.
+- Filters, date range first, sit in one row above the content they scope, and every number, chart and table below re-renders for the same range. Show the resolved dates next to the control ("17 Okt - 15 Nov 2026").
+- Exactly one hero figure per screen (`text-5xl`, weight 600, proportional digits), usually the number the user acts on, next to its primary action. Other KPIs are stat tiles: label, value, and a signed change against a named period with an arrow icon (`success` up, `destructive` down, or reversed when down is good).
+- Tables follow 10.7; filters on tables (status tabs) swap rows in place following 9.3a.
+- Each card has a title and a one-line scope ("30 hari terakhir", "Sepanjang waktu").
 
 ## 11. Content and microcopy
 
@@ -740,7 +769,29 @@ Limits: at most two `brand-surface`/`stage` blocks plus one `highlight` band per
 
 ---
 
-## 15. Tailwind CSS v4 setup
+## 15. Implementation rules
+
+- **Interactivity goes through the framework.** In React/Next.js, anything with state or event handlers is a Client Component (`"use client"`) using React state and refs. **NEVER** render raw `<script>` tags inside components, and never let a script mutate DOM that React rendered: it causes hydration mismatches and the script does not run after client-side navigation.
+- CSS-only interactions are preferred where they are enough (`:has()` with radio inputs for tabs and switchers, `<details>` for disclosures, the `popover` attribute for menus and drawers). They need no JavaScript and cannot mismatch.
+- Anything that depends on the browser (viewport size, `localStorage`, `matchMedia`, the clipboard) runs in an effect or event handler, never during render.
+- Theme init is the one script allowed before hydration. In Next.js App Router, place it in the root layout with `next/script`:
+
+```tsx
+import Script from "next/script";
+
+<html lang="id" data-scroll-behavior="smooth" suppressHydrationWarning>
+  <body>
+    <Script id="theme-init" strategy="beforeInteractive">{themeInitScript}</Script>
+    {children}
+  </body>
+</html>
+```
+
+  It may only touch `<html>` (`data-theme`, the `.js` class), which carries `suppressHydrationWarning`.
+- Next.js with smooth scrolling: add `data-scroll-behavior="smooth"` to `<html>` so route changes do not animate the scroll.
+- Before finishing, open the app in the framework's dev server and confirm the browser console has no hydration errors or warnings, on first load and after client-side navigation.
+
+## 16. Tailwind CSS v4 setup
 
 Put tokens (sections 3, 5.1, 6.4, 9.1) in the global stylesheet, then map them:
 
@@ -796,6 +847,7 @@ Put tokens (sections 3, 5.1, 6.4, 9.1) in the global stylesheet, then map them:
   --color-brand-muted: var(--brand-surface-muted);
   --color-brand-raised: var(--brand-surface-raised);
   --color-brand-border: var(--brand-surface-border);
+  --color-chart-1: var(--chart-1);
   --color-stage: var(--stage);
   --color-stage-foreground: var(--stage-foreground);
   --color-stage-muted: var(--stage-muted);
@@ -828,7 +880,7 @@ Usage examples: `bg-brand text-brand-foreground`, `bg-stage text-stage-foregroun
 
 ---
 
-## 16. Pre-ship checklist
+## 17. Pre-ship checklist
 
 - [ ] No hardcoded colors in components; only tokens.
 - [ ] Light and dark both checked on every changed screen; no flash on load.
@@ -849,4 +901,8 @@ Usage examples: `bg-brand text-brand-foreground`, `bg-stage text-stage-foregroun
 - [ ] Switchers and tabs swap content only; the container never blinks.
 - [ ] Theme toggle is a single header button; footer uses the page background with a centered copyright line.
 - [ ] Money and statistics use sans `tabular-nums`, not mono.
+- [ ] Charts: `chart-1` (or a validated palette), tooltip, keyboard access, and a table view.
+- [ ] Dashboards: one filter row scoping everything, one hero figure, no color blocks or scroll reveal.
+- [ ] Dialogs use native `<dialog>`; toasts follow 10.6; sample data is labelled as demo.
+- [ ] No raw `<script>` inside components; dev-server console free of hydration errors and warnings.
 - [ ] Copy is specific, consistent in language, free of hype and placeholders.

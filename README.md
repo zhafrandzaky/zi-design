@@ -14,6 +14,8 @@ A reusable UI/UX standard for all projects: design tokens, typography, motion, c
 - Geist and Geist Mono, a fixed type scale, and tabular numerals for data.
 - Tailwind CSS v4 mapping, compatible with shadcn/ui token names.
 - Motion rules: color-shift and fill hovers, border hover on cards, smooth scroll, scroll reveal, reduced-motion support.
+- Dashboard and chart rules: one filter row, one hero figure, a validated chart color, tooltips, keyboard access and table views.
+- Implementation rules that prevent hydration errors in React and Next.js.
 - Expressive moments for landing pages: solid brand color blocks, an interactive product demo, and bold typography, so pages stay flat without looking like a template.
 - Logo and favicon pipeline: use owner assets, otherwise generate SVG and export the full icon set.
 - No emoji, no neon, no glow, no glassmorphism, no hype copy.
@@ -38,7 +40,7 @@ Then point your AI agent to it, for example in `AGENTS.md` or `CLAUDE.md`:
 
 ```md
 ## UI/UX
-Follow DESIGN.md for all UI work. Project overrides are in brand.md. Run the checklist in DESIGN.md section 16 before finishing UI tasks.
+Follow DESIGN.md for all UI work. Project overrides are in brand.md. Run the checklist in DESIGN.md section 17 before finishing UI tasks.
 ```
 
 To update a project to the latest standard, run the first command again. `brand.md` is never overwritten.
